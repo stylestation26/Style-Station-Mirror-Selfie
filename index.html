@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Style Station • Garba Mirror</title>
+<style>
+:root{--navy:#08152b;--gold:#d5ae5f;--cream:#fff9ed}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#07111f;color:#fff}
+.wrap{max-width:520px;margin:auto;min-height:100vh;padding:18px 16px 28px}
+.card{background:linear-gradient(180deg,#0e1b31,#081323);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.logo{display:block;width:115px;height:115px;object-fit:cover;border-radius:50%;margin:2px auto 12px}
+h1{text-align:center;font-size:27px;margin:0 0 4px;letter-spacing:.4px}
+.sub{text-align:center;color:#cbd5e1;margin:0 0 18px;font-size:14px}
+.upload{display:block;border:1px dashed #d5ae5f;border-radius:18px;padding:22px;text-align:center;background:rgba(213,174,95,.07);cursor:pointer}
+.upload strong{display:block;font-size:17px}.upload span{display:block;color:#aab6c8;font-size:12px;margin-top:6px}
+input{display:none}
+.label{font-size:13px;color:#cbd5e1;margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid button{padding:0;border:2px solid transparent;background:none;border-radius:12px;overflow:hidden;aspect-ratio:3/4}
+.grid button.active{border-color:var(--gold)}
+.grid img{width:100%;height:100%;object-fit:cover}
+.actions{display:flex;gap:10px;margin-top:16px}
+button.main,.download{flex:1;border:0;border-radius:14px;padding:14px;font-weight:800;font-size:15px;background:linear-gradient(135deg,#d9b76b,#a87827);color:#101827;cursor:pointer}
+button.main:disabled{opacity:.45;cursor:not-allowed}
+#preview{width:100%;display:block;border-radius:18px;margin-top:16px;background:#111}
+.note{text-align:center;color:#8f9bad;font-size:11px;margin-top:14px;line-height:1.4}
+.hidden{display:none}
+.status{text-align:center;margin-top:12px;color:#f4d99b;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <img class="logo" src="assets/style-station-logo.png" alt="Style Station">
+    <h1>GARBA MIRROR</h1>
+    <p class="sub">Create your festive Style Station photo</p>
+
+    <label class="upload" for="photo">
+      <strong>UPLOAD YOUR PHOTO</strong>
+      <span>JPG or PNG • Your original photo stays unchanged</span>
+    </label>
+    <input id="photo" type="file" accept="image/*">
+
+    <div class="label">Choose your Garba backdrop</div>
+    <div class="grid" id="bgGrid"></div>
+
+    <div class="actions">
+      <button class="main" id="make" disabled>CREATE PHOTO</button>
+      <button class="download hidden" id="download">DOWNLOAD</button>
+    </div>
+
+    <div id="status" class="status"></div>
+    <canvas id="canvas" class="hidden"></canvas>
+    <img id="preview" class="hidden" alt="Final Style Station Garba photo">
+
+    <p class="note">Style Station • Style for Every You</p>
+  </div>
+</div>
+
+<script>
+const backgrounds = [
+  ["garba-couple.jpg","Garba Couple"],
+  ["garba-dancer.jpg","Dandiya"],
+  ["garba-couple-2.jpg","Festive Couple"],
+  ["garba-dandiya.jpg","Dandiya Night"],
+  ["garba-dance.jpg","Garba Night"],
+  ["garba-stage.jpg","Festive Stage"]
+];
+
+const grid=document.getElementById('bgGrid');
+const photo=document.getElementById('photo');
+const make=document.getElementById('make');
+const download=document.getElementById('download');
+const preview=document.getElementById('preview');
+const canvas=document.getElementById('canvas');
+const status=document.getElementById('status');
+let selected=0, userImage=null;
+
+backgrounds.forEach((b,i)=>{
+  const btn=document.createElement('button');
+  btn.innerHTML=`<img src="assets/${b[0]}" alt="${b[1]}">`;
+  btn.title=b[1];
+  if(i===0) btn.classList.add('active');
+  btn.onclick=()=>{selected=i;[...grid.children].forEach(x=>x.classList.remove('active'));btn.classList.add('active')};
+  grid.appendChild(btn);
+});
+
+photo.onchange=()=>{
+  const f=photo.files?.[0];
+  if(!f)return;
+  const reader=new FileReader();
+  reader.onload=()=>{userImage=new Image();userImage.onload=()=>{make.disabled=false;status.textContent="Photo ready."};userImage.src=reader.result};
+  reader.readAsDataURL(f);
+};
+
+function cover(ctx,img,x,y,w,h){
+  const s=Math.max(w/img.width,h/img.height);
+  const iw=img.width*s, ih=img.height*s;
+  ctx.drawImage(img,x+(w-iw)/2,y+(h-ih)/2,iw,ih);
+}
+function contain(ctx,img,x,y,w,h){
+  const s=Math.min(w/img.width,h/img.height);
+  const iw=img.width*s, ih=img.height*s;
+  ctx.drawImage(img,x+(w-iw)/2,y+(h-ih)/2,iw,ih);
+}
+
+make.onclick=()=>{
+  if(!userImage)return;
+  status.textContent="Creating your Style Station photo…";
+  const bg=new Image();
+  bg.onload=()=>{
+    const W=1080,H=1920;
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    cover(ctx,bg,0,0,W,H);
+
+    // Dark top/bottom gradients for readable branding.
+    const top=ctx.createLinearGradient(0,0,0,360); top.addColorStop(0,"rgba(0,0,0,.72)"); top.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=top;ctx.fillRect(0,0,W,360);
+    const bot=ctx.createLinearGradient(0,H-420,0,H); bot.addColorStop(0,"rgba(0,0,0,0)"); bot.addColorStop(1,"rgba(0,0,0,.78)");
+    ctx.fillStyle=bot;ctx.fillRect(0,H-420,W,420);
+
+    // Preserve uploaded photo exactly inside a premium portrait frame.
+    const margin=72, cardW=W-144, cardH=1120, cardY=440;
+    ctx.save();
+    ctx.fillStyle="rgba(8,21,43,.38)";
+    ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=34;ctx.shadowOffsetY=16;
+    ctx.roundRect(margin,cardY,cardW,cardH,42);ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();ctx.roundRect(margin+18,cardY+18,cardW-36,cardH-36,30);ctx.clip();
+    contain(ctx,userImage,margin+18,cardY+18,cardW-36,cardH-36);
+    ctx.restore();
+
+    // Gold frame
+    ctx.strokeStyle="#d5ae5f";ctx.lineWidth=6;
+    ctx.beginPath();ctx.roundRect(margin+18,cardY+18,cardW-36,cardH-36,30);ctx.stroke();
+
+    // Branding
+    ctx.fillStyle="#fff";ctx.textAlign="center";ctx.font="800 48px system-ui";
+    ctx.fillText("STYLE STATION",W/2,110);
+    ctx.fillStyle="#e5c67d";ctx.font="600 28px system-ui";
+    ctx.fillText("GARBA MIRROR",W/2,155);
+    ctx.fillStyle="#fff";ctx.font="600 30px system-ui";
+    ctx.fillText("STYLE FOR EVERY YOU",W/2,H-115);
+
+    preview.src=canvas.toDataURL("image/jpeg",.94);
+    preview.classList.remove("hidden");
+    download.classList.remove("hidden");
+    status.textContent="Your photo is ready.";
+    download.onclick=()=>{
+      const a=document.createElement("a");
+      a.download="Style-Station-Garba-Mirror.jpg";
+      a.href=canvas.toDataURL("image/jpeg",.94);
+      a.click();
+    };
+  };
+  bg.src="assets/"+backgrounds[selected][0];
+};
+</script>
+</body>
+</html>
